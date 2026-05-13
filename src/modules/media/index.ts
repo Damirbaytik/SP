@@ -2,25 +2,13 @@ import { Composer, InputFile } from 'grammy';
 import type { BotContext } from '../../types.js';
 import { supabase } from '../../services/supabase.js';
 import { redis } from '../../services/redis.js';
+import { getConnectionOwner } from '../../services/connection.js';
+import { getUserSettings } from '../../services/settings.js';
+import { escapeHtml } from '../../services/utils.js';
 
 export const mediaModule = new Composer<BotContext>();
 
-// Кэш владельца
-async function getConnectionOwner(connectionId: string): Promise<number | null> {
-  const cacheKey = `bc_owner:${connectionId}`;
-  const cached = await redis.get(cacheKey);
-  if (cached) return parseInt(cached);
-
-  const { data } = await supabase
-    .from('business_connections')
-    .select('user_id')
-    .eq('id', connectionId)
-    .single();
-
-  if (!data) return null;
-  await redis.set(cacheKey, String(data.user_id), 'EX', 86400);
-  return data.user_id;
-}
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 // Владелец отвечает на фото/видео — если self-destruct, сохраняем
 mediaModule.on('business_message', async (ctx, next) => {
@@ -31,11 +19,12 @@ mediaModule.on('business_message', async (ctx, next) => {
   const replyTo = msg.reply_to_message;
   if (!replyTo) return next();
 
-  // Проверяем что это владелец
   const ownerId = await getConnectionOwner(connectionId);
   if (!ownerId || msg.from?.id !== ownerId) return next();
 
-  // Ищем медиа в reply
+  const settings = await getUserSettings(ownerId);
+  if (!settings.notify_timer_media) return next();
+
   const fileId = replyTo.photo?.at(-1)?.file_id ?? replyTo.video?.file_id;
   if (!fileId) return next();
 
@@ -45,15 +34,25 @@ mediaModule.on('business_message', async (ctx, next) => {
   const dedupeKey = `saved:${connectionId}:${replyTo.message_id}`;
   if (await redis.get(dedupeKey)) return next();
 
-  // Скачиваем и отправляем (getFile работает для self-destruct до открытия)
   try {
     const file = await ctx.api.getFile(fileId);
+    if (file.file_size && file.file_size > MAX_FILE_SIZE) return next();
+
     const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`;
     const response = await fetch(fileUrl);
+
+    // Проверка размера по заголовку
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) return next();
+
     const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > MAX_FILE_SIZE) return next();
+
     const inputFile = new InputFile(buffer, file.file_path?.split('/').pop() ?? 'media');
 
-    const caption = `<b>${replyTo.from?.first_name ?? 'Собеседник'}</b> (@${replyTo.from?.username ?? 'unknown'}) отправил(а) медиа с таймером\n✅ Сохранено!`;
+    const name = escapeHtml(replyTo.from?.first_name ?? 'Собеседник');
+    const uname = escapeHtml(replyTo.from?.username ?? 'unknown');
+    const caption = `<b>${name}</b> (@${uname}) отправил(а) медиа с таймером\n✅ Сохранено!`;
 
     if (fileType === 'photo') {
       await ctx.api.sendPhoto(ownerId, inputFile, { caption, parse_mode: 'HTML' });
@@ -63,18 +62,16 @@ mediaModule.on('business_message', async (ctx, next) => {
 
     await redis.set(dedupeKey, '1', 'EX', 86400);
 
-    await supabase.from('saved_media').insert({
+    // Не блокируем на insert
+    supabase.from('saved_media').insert({
       user_id: ownerId,
       chat_id: msg.chat.id,
       message_id: replyTo.message_id,
       file_id: fileId,
       file_type: fileType,
-    });
-  } catch (err: any) {
-    // Если ошибка НЕ связана с self-destruct — пропускаем молча
-    if (!err.message?.includes('SelfDestruct') && !err.message?.includes('wrong file')) {
-      // Обычное фото — не сохраняем, просто пропускаем
-    }
+    }).then(() => {}, (err) => console.error('[Media] DB insert error:', err.message));
+  } catch {
+    // Не таймерное / нет прав / ошибка сети — пропускаем молча
   }
 
   return next();

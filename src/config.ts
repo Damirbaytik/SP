@@ -12,4 +12,10 @@ export const config = {
   cache: {
     messageTtl: 60 * 60 * 24, // 24 часа
   },
+  webhook: {
+    url: process.env.WEBHOOK_URL || '', // https://your-domain.com или ngrok URL
+    port: parseInt(process.env.PORT || '3000'),
+    secret: process.env.WEBHOOK_SECRET || 'spy-dialog-bot-secret',
+  },
+  mode: (process.env.MODE || 'polling') as 'polling' | 'webhook',
 } as const;

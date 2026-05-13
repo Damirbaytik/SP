@@ -1,4 +1,5 @@
-import { Bot } from 'grammy';
+import { Bot, webhookCallback } from 'grammy';
+import express from 'express';
 import { config } from './config.js';
 import type { BotContext } from './types.js';
 
@@ -28,8 +29,27 @@ bot.use(streaksModule);
 bot.use(spyModule);
 
 // Start
-bot.start({
-  onStart: (info) => {
-    console.log(`[Bot] @${info.username} started`);
-  },
-});
+if (config.mode === 'webhook') {
+  const app = express();
+  app.use(express.json());
+
+  app.use(`/webhook/${config.webhook.secret}`, webhookCallback(bot, 'express'));
+
+  app.get('/health', (_req, res) => res.send('ok'));
+
+  app.listen(config.webhook.port, async () => {
+    const webhookUrl = `${config.webhook.url}/webhook/${config.webhook.secret}`;
+    await bot.api.setWebhook(webhookUrl, {
+      allowed_updates: ['message', 'callback_query', 'business_message', 'edited_business_message', 'deleted_business_messages', 'business_connection', 'pre_checkout_query'],
+    });
+    console.log(`[Bot] Webhook mode on port ${config.webhook.port}`);
+    console.log(`[Bot] Webhook URL: ${webhookUrl}`);
+  });
+} else {
+  bot.start({
+    allowed_updates: ['message', 'callback_query', 'business_message', 'edited_business_message', 'deleted_business_messages', 'business_connection', 'pre_checkout_query'],
+    onStart: (info) => {
+      console.log(`[Bot] @${info.username} started (polling)`);
+    },
+  });
+}

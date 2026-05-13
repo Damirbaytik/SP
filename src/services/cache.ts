@@ -40,12 +40,16 @@ export const messageCache = {
   // Сохраняем batch удалённых сообщений для пагинации по кнопкам
   async setDeletedBatch(userId: number, batchId: string, messages: CachedMessage[]): Promise<void> {
     const key = deletedBatchKey(userId, batchId);
-    await redis.set(key, JSON.stringify(messages), 'EX', 86400); // 24ч
+    await redis.set(key, JSON.stringify({ ownerId: userId, messages }), 'EX', 86400); // 24ч
   },
 
   async getDeletedBatch(userId: number, batchId: string): Promise<CachedMessage[] | null> {
     const key = deletedBatchKey(userId, batchId);
     const data = await redis.get(key);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    const parsed = JSON.parse(data);
+    // Защита: проверяем что batch принадлежит запрашивающему
+    if (parsed.ownerId !== userId) return null;
+    return parsed.messages;
   },
 };

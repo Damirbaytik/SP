@@ -1,6 +1,7 @@
 import { Composer, InlineKeyboard } from 'grammy';
 import type { BotContext } from '../../types.js';
 import { supabase } from '../../services/supabase.js';
+import { invalidateSettings } from '../../services/settings.js';
 
 export const commandsModule = new Composer<BotContext>();
 
@@ -79,6 +80,12 @@ commandsModule.command('settings', async (ctx) => {
   const keyboard = new InlineKeyboard()
     .text(`${settings.spy_enabled ? '✅' : '❌'} Spy-модуль`, 'toggle:spy_enabled')
     .row()
+    .text(`${settings.notify_edited ? '✅' : '❌'} Редактирование`, 'toggle:notify_edited')
+    .row()
+    .text(`${settings.notify_deleted ? '✅' : '❌'} Удаление`, 'toggle:notify_deleted')
+    .row()
+    .text(`${settings.notify_timer_media ? '✅' : '❌'} Медиа с таймером`, 'toggle:notify_timer_media')
+    .row()
     .text(`${settings.animations_enabled ? '✅' : '❌'} Анимации`, 'toggle:animations_enabled')
     .row()
     .text(`${settings.streaks_enabled ? '✅' : '❌'} Стрики`, 'toggle:streaks_enabled');
@@ -104,6 +111,9 @@ commandsModule.callbackQuery(/^toggle:(.+)$/, async (ctx) => {
     .update({ [field]: newValue, updated_at: new Date().toISOString() })
     .eq('user_id', userId);
 
+  // Инвалидация кэша настроек
+  await invalidateSettings(userId);
+
   await ctx.answerCallbackQuery(`${newValue ? 'Включено' : 'Выключено'}`);
 
   // Обновляем клавиатуру
@@ -117,6 +127,12 @@ commandsModule.callbackQuery(/^toggle:(.+)$/, async (ctx) => {
 
   const keyboard = new InlineKeyboard()
     .text(`${updated.spy_enabled ? '✅' : '❌'} Spy-модуль`, 'toggle:spy_enabled')
+    .row()
+    .text(`${updated.notify_edited ? '✅' : '❌'} Редактирование`, 'toggle:notify_edited')
+    .row()
+    .text(`${updated.notify_deleted ? '✅' : '❌'} Удаление`, 'toggle:notify_deleted')
+    .row()
+    .text(`${updated.notify_timer_media ? '✅' : '❌'} Медиа с таймером`, 'toggle:notify_timer_media')
     .row()
     .text(`${updated.animations_enabled ? '✅' : '❌'} Анимации`, 'toggle:animations_enabled')
     .row()
