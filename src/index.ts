@@ -8,6 +8,7 @@ import { businessModule } from './modules/business/index.js';
 import { spyModule } from './modules/spy/index.js';
 import { mediaModule } from './modules/media/index.js';
 import { animationsModule } from './modules/animations/index.js';
+import { animationsMenu } from './modules/animations/menu.js';
 import { streaksModule } from './modules/streaks/index.js';
 import { paymentsModule } from './modules/payments/index.js';
 import { commandsModule } from './modules/commands/index.js';
@@ -23,6 +24,7 @@ bot.catch((err) => {
 bot.use(commandsModule);
 bot.use(businessModule);
 bot.use(paymentsModule);
+bot.use(animationsMenu);
 bot.use(mediaModule);
 bot.use(animationsModule);
 bot.use(streaksModule);
