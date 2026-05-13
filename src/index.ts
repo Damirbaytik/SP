@@ -14,6 +14,8 @@ import { paymentsModule } from './modules/payments/index.js';
 import { plusModule } from './modules/plus/index.js';
 import { commandsModule } from './modules/commands/index.js';
 import './modules/commands/settings.js';
+import { chatLogModule } from './modules/chat_log/index.js';
+import { startMediaServer } from './services/media_server.js';
 
 const bot = new Bot<BotContext>(config.botToken);
 
@@ -32,7 +34,11 @@ bot.use(animationsMenu);
 bot.use(mediaModule);
 bot.use(animationsModule);
 bot.use(streaksModule);
+bot.use(chatLogModule);
 bot.use(spyModule);
+
+// Media API server
+startMediaServer(bot);
 
 // Start
 if (config.mode === 'webhook') {

@@ -1,4 +1,4 @@
-﻿import { Composer, InlineKeyboard } from 'grammy';
+import { Composer, InlineKeyboard } from 'grammy';
 import type { BotContext } from '../../types.js';
 import { supabase } from '../../services/supabase.js';
 import { invalidateSettings } from '../../services/settings.js';
@@ -38,8 +38,7 @@ commandsModule.command('start', async (ctx) => {
           const daysForReferred = await getConfig('referral_days_for_referred', 7) as number;
           await extendSubscription(referrerId, daysForReferrer, 'pro');
           await extendSubscription(userId, daysForReferred, 'pro');
-          await extendSubscription(userId, days, 'pro');
-          await ctx.api.sendMessage(referrerId, '\u2705 \u0411\u043B\u0430\u0433\u043E\u0434\u0430\u0440\u0438\u043C \u0437\u0430 \u043F\u0440\u0438\u0433\u043B\u0430\u0448\u0451\u043D\u043D\u043E\u0433\u043E \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F! \u0412\u0430\u0448 \u043F\u0440\u043E\u0431\u043D\u044B\u0439 \u043F\u0435\u0440\u0438\u043E\u0434 \u043F\u0440\u043E\u0434\u043B\u0451\u043D \u043D\u0430 ' + daysForReferrer + ' \u0434\u043D\u0435\u0439.').catch(() => {});
+          await ctx.api.sendMessage(referrerId, '\u2705 \u0411\u043B\u0430\u0433\u043E\u0434\u0430\u0440\u0438\u043C \u0437\u0430 \u043F\u0440\u0438\u0433\u043B\u0430\u0448\u0451\u043D\u043D\u043E\u0433\u043E \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F! \u0412\u0430\u0448 \u043F\u0440\u043E\u0431\u043D\u044B\u0439 \u043F\u0435\u0440\u0438\u043E\u0434 \u043F\u0440\u043E\u0434\u043B\u0451\u043D \u043D\u0430 ' + daysForReferrer + ' \u0434\u043D\u0435\u0439.').catch(e => console.error('[Ref notify]', e.message));
       }
     }
   }

@@ -28,6 +28,11 @@ mediaModule.on('business_message', async (ctx, next) => {
   const fileId = replyTo.photo?.at(-1)?.file_id ?? replyTo.video?.file_id;
   if (!fileId) return next();
 
+  // Проверка что это реально self-destruct media (не обычное фото)
+  const replyRaw = replyTo as any;
+  const isTimerMedia = replyRaw.has_media_spoiler || replyRaw.has_protected_content;
+  if (!isTimerMedia) return next();
+
   const fileType = replyTo.photo ? 'photo' : 'video';
 
   // Дедупликация
