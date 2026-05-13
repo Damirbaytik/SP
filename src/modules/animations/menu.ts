@@ -6,6 +6,7 @@ import {
   hasAnimationAccess,
   CATEGORIES,
 } from '../../services/animations.js';
+import { supabase } from '../../services/supabase.js';
 import { escapeHtml } from '../../services/utils.js';
 import { redis } from '../../services/redis.js';
 
@@ -176,12 +177,19 @@ animationsMenu.callbackQuery(/^anim_locked:(.+)$/, async (ctx) => {
 
 animationsMenu.callbackQuery('anim_buy_pro', async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.reply('Используй /subscribe для покупки подписки Pro');
+  await ctx.reply('Используй /plus для покупки подписки Pro');
 });
 
 animationsMenu.callbackQuery('anim_referral', async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.reply('Используй /referral для получения реферальной ссылки');
+  const userId = ctx.from!.id;
+  const botUsername = ctx.me.username;
+  const { data: user } = await supabase.from('users').select('referral_code').eq('id', userId).single();
+  const code = user?.referral_code ?? `ref_${userId}`;
+  const link = `https://t.me/${botUsername}?start=${code}`;
+  const { count } = await supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('referrer_id', userId);
+  const keyboard = new InlineKeyboard().url('\u{1F4E8} \u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F', `https://t.me/share/url?url=${encodeURIComponent(link)}`);
+  await ctx.reply(`\u{1F465} \u041F\u0440\u0438\u0433\u043B\u0430\u0441\u0438 \u0434\u0440\u0443\u0433\u0430 \u0447\u0442\u043E\u0431\u044B \u0440\u0430\u0437\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0430\u043D\u0438\u043C\u0430\u0446\u0438\u044E!\n\n\u0422\u0432\u043E\u044F \u0441\u0441\u044B\u043B\u043A\u0430: <code>${link}</code>\n\u041F\u0440\u0438\u0433\u043B\u0430\u0448\u0435\u043D\u043E: <b>${count ?? 0}</b>`, { parse_mode: 'HTML', reply_markup: keyboard });
 });
 
 function sleep(ms: number): Promise<void> {

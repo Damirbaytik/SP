@@ -13,12 +13,14 @@ import { streaksModule } from './modules/streaks/index.js';
 import { paymentsModule } from './modules/payments/index.js';
 import { plusModule } from './modules/plus/index.js';
 import { commandsModule } from './modules/commands/index.js';
+import './modules/commands/settings.js';
 
 const bot = new Bot<BotContext>(config.botToken);
 
 // Error handling
 bot.catch((err) => {
-  console.error('[Bot] Error:', err.message);
+  console.error('[Bot] Error:', err.error ?? err.message);
+  console.error(err.stack ?? '');
 });
 
 // Register modules

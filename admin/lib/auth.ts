@@ -1,13 +1,13 @@
 import { createClient, createAdminClient } from './supabase/server';
 import { redirect } from 'next/navigation';
 
-// Проверяет что текущий юзер — админ (через email в bot_config.admin_emails или telegram_id)
 export async function requireAdmin() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (!user) redirect('/login');
+  if (!session) redirect('/login');
 
+  const user = session.user;
   const admin = createAdminClient();
   const { data: config } = await admin
     .from('bot_config')

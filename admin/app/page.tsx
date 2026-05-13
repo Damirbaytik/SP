@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { Users, CreditCard, Settings, Sparkles, DollarSign } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
   await requireAdmin();
   const admin = createAdminClient();

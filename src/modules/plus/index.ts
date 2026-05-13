@@ -1,4 +1,4 @@
-import { Composer, InlineKeyboard } from 'grammy';
+﻿import { Composer, InlineKeyboard } from 'grammy';
 import type { BotContext } from '../../types.js';
 import {
   getActivePlans,
@@ -16,10 +16,15 @@ plusModule.command('plus', async (ctx) => {
   await renderPlusMenu(ctx);
 });
 
-async function renderPlusMenu(ctx: BotContext) {
+export async function renderPlusMenu(ctx: BotContext) {
   const userId = ctx.from!.id;
-  const status = await getSubscriptionStatus(userId);
-  const plans = await getActivePlans();
+
+  // Параллельные запросы для скорости
+  const [status, plans, { data: userData }] = await Promise.all([
+    getSubscriptionStatus(userId),
+    getActivePlans(),
+    supabase.from('users').select('trial_used').eq('id', userId).single(),
+  ]);
 
   let text = '💎 <b>Подписка Plus</b>\n\n';
 
@@ -30,9 +35,7 @@ async function renderPlusMenu(ctx: BotContext) {
     text += `Осталось дней: ${status.daysLeft}\n\n`;
   } else {
     const trialDays = await getConfig<number>('trial_days', 3);
-    const { data: user } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-
-    if (!user?.trial_used) {
+    if (!userData?.trial_used) {
       text += `🎁 Получи <b>${trialDays} дней бесплатно</b> прямо сейчас\n\n`;
     } else {
       text += 'Подписка неактивна\n\n';
@@ -47,19 +50,21 @@ async function renderPlusMenu(ctx: BotContext) {
   const keyboard = new InlineKeyboard();
 
   // Пробный период
-  const { data: user } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-  if (!status.active && !user?.trial_used) {
+  if (!status.active && !userData?.trial_used) {
     keyboard.text('🎁 Активировать пробный период', 'plus:trial').row();
   }
 
-  // Тарифы
+  // Тарифы Stars
   for (const p of plans) {
-    keyboard
-      .text(`⭐ ${p.title}`, `plus:buy_stars:${p.code}`)
-      .text(`💳 ${p.title}`, `plus:buy_card:${p.code}`)
-      .row();
+    keyboard.text(`⭐ ${p.title} — ${p.price_stars}`, `plus:buy_stars:${p.code}`).row();
+  }
+  // Карта — только месяц, после всех Stars
+  const monthPlan = plans.find(p => p.code === 'month');
+  if (monthPlan) {
+    keyboard.text(`💳 Месяц • Банковская карта`, `plus:buy_card:month`).row();
   }
 
+  keyboard.add({ text: '👥 Пригласи друга', callback_data: 'plus:referral', style: 'primary' }).row();
   keyboard.text('⬅️ Назад', 'start:back');
 
   await ctx.reply(text, { parse_mode: 'HTML', reply_markup: keyboard });
@@ -81,6 +86,29 @@ plusModule.callbackQuery('plus:trial', async (ctx) => {
     `Все функции Pro доступны на <b>${result.days} дней</b>.\n` +
     `После окончания можешь оформить подписку.`,
     { parse_mode: 'HTML' }
+  );
+});
+
+// Реферальная ссылка
+plusModule.callbackQuery('plus:referral', async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const userId = ctx.from!.id;
+  const botUsername = ctx.me.username;
+
+  const { data: user } = await supabase.from('users').select('referral_code').eq('id', userId).single();
+  const code = user?.referral_code ?? `ref_${userId}`;
+  const link = `https://t.me/${botUsername}?start=${code}`;
+
+  const { count } = await supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('referrer_id', userId);
+  const daysReferrer = await getConfig<number>('referral_days_per_invite', 7);
+  const daysReferred = await getConfig<number>('referral_days_for_referred', 7);
+
+  await ctx.reply(
+    `👥 <b>Пригласи друга</b>\n\n` +
+    `Поделись ссылкой и получи <b>${daysReferrer} дней</b> Plus!\nТвой друг получит <b>${daysReferred} дней</b>.\n\n` +
+    `Твоя ссылка:\n<code>${link}</code>\n\n` +
+    `Приглашено: <b>${count ?? 0}</b> чел.`,
+    { parse_mode: 'HTML', reply_markup: new InlineKeyboard().url('\u{1F4E8} Поделиться', 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent('Подключи SpyDialogBot и получи ' + daysReferred + ' дней Plus!')) }
   );
 });
 
@@ -108,7 +136,7 @@ plusModule.callbackQuery(/^plus:buy_card:(.+)$/, async (ctx) => {
 
   const providerToken = await getConfig<string>('card_provider_token', '');
   if (!providerToken) {
-    await ctx.answerCallbackQuery('💳 Оплата картой пока не настроена', { show_alert: true });
+    await ctx.answerCallbackQuery({ text: '💳 Оплата картой пока не настроена', show_alert: true });
     return;
   }
 
