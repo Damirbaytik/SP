@@ -11,6 +11,7 @@ import { animationsModule } from './modules/animations/index.js';
 import { animationsMenu } from './modules/animations/menu.js';
 import { streaksModule } from './modules/streaks/index.js';
 import { paymentsModule } from './modules/payments/index.js';
+import { plusModule } from './modules/plus/index.js';
 import { commandsModule } from './modules/commands/index.js';
 
 const bot = new Bot<BotContext>(config.botToken);
@@ -23,6 +24,7 @@ bot.catch((err) => {
 // Register modules
 bot.use(commandsModule);
 bot.use(businessModule);
+bot.use(plusModule);
 bot.use(paymentsModule);
 bot.use(animationsMenu);
 bot.use(mediaModule);
