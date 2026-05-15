@@ -43,40 +43,21 @@ commandsModule.command('start', async (ctx) => {
     }
   }
 
-  // Авто-trial при первом start
-  const { data: userData } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-  if (userData && !userData.trial_used) {
-    const trialDays = await getConfig('trial_days', 3) as number;
-    await supabase.from('users').update({ trial_used: true, trial_expires_at: new Date(Date.now() + trialDays * 86400000).toISOString() }).eq('id', userId);
-  }
-
   const botUsername = ctx.me.username;
 
   const keyboard = new InlineKeyboard()
     .add({ text: '🔗 Подключить', url: 'tg://settings/edit', style: 'success' })
     .row()
     .add({ text: '🎬 Анимации', callback_data: 'start:animations', style: 'danger' })
-    .add({ text: '▶️ Демонстрация', callback_data: 'start:demo', style: 'primary' })
+    .add({ text: '\u25B6\uFE0F \u0414\u0435\u043C\u043E\u043D\u0441\u0442\u0440\u0430\u0446\u0438\u044F', callback_data: 'start:demo', style: 'primary' })
     .row()
-    .add({ text: '📋 Скопировать username', copy_text: { text: `@${botUsername}` }, style: 'primary' })
+    .add({ text: '\u{1F48E} \u041F\u043E\u0434\u043F\u0438\u0441\u043A\u0430', callback_data: 'start:subscribe', style: 'primary' })
+    .add({ text: '\u2699\uFE0F \u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438', callback_data: 'start:settings', style: 'primary' })
     .row()
-    .add({ text: '💎 Подписка', callback_data: 'start:subscribe', style: 'primary' })
-    .add({ text: '⚙️ Настройки', callback_data: 'start:settings', style: 'primary' });
-
-  await ctx.replyWithPhoto(
-    'https://i.imgur.com/placeholder.png', // TODO: заменить на реальный file_id
-    {
-      caption:
-        '👋 Привет! Я <b>SpyDialogBot</b>.\n\n' +
-        '🕵️ Подключи меня как бизнес-бота и получи суперспособности:\n\n' +
-        '• Ловлю удалённые и изменённые сообщения\n' +
-        '• Сохраняю медиа с таймером\n' +
-        '• Живые анимации в чатах\n' +
-        '• Стрики активности\n\n' +
-        'Нажми <b>«Подключить»</b> чтобы начать 👇',
-      parse_mode: 'HTML',
-      reply_markup: keyboard,
-    }
+    .add({ text: '\u{1F4CB} \u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C username', copy_text: { text: `@${botUsername}` }, style: 'primary' });
+  await ctx.reply(
+    `\u{1F6E1} <b>SV BOT \u0437\u0430\u043F\u0443\u0449\u0435\u043D</b>\n\n\u0423\u0434\u0438\u0432\u043B\u044F\u0439 \u0441\u043E\u0431\u0435\u0441\u0435\u0434\u043D\u0438\u043A\u043E\u0432. \u0412\u0438\u0434\u044C \u0442\u043E, \u0447\u0442\u043E \u043E\u0431\u044B\u0447\u043D\u043E \u0441\u043A\u0440\u044B\u0442\u043E:\n\n\u2022 \u0423\u0434\u0430\u043B\u0451\u043D\u043D\u044B\u0435 \u0438 \u0438\u0437\u043C\u0435\u043D\u0451\u043D\u043D\u044B\u0435 \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F\n\u2022 \u0424\u043E\u0442\u043E \u0438 \u0432\u0438\u0434\u0435\u043E \u0441 \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u043C\n\u2022 \u0416\u0438\u0432\u044B\u0435 \u0430\u043D\u0438\u043C\u0430\u0446\u0438\u0438 \u0432 \u0447\u0430\u0442\u0430\u0445\n\n<blockquote>\u2753 <b>\u041A\u0430\u043A \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C:</b>\n1. \u041D\u0430\u0436\u043C\u0438 \u00AB\u{1F50C} \u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C\u00BB\n2. \u0412\u044B\u0431\u0435\u0440\u0438 \u00AB\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044F \u0447\u0430\u0442\u043E\u0432\u00BB\n3. \u0412\u0432\u0435\u0434\u0438 <code>@${botUsername}</code></blockquote>`,
+    { parse_mode: 'HTML', reply_markup: keyboard }
   );
 });
 
@@ -149,13 +130,6 @@ commandsModule.callbackQuery('start:animations', async (ctx) => {
 commandsModule.callbackQuery('start:demo', async (ctx) => {
   await ctx.answerCallbackQuery();
 
-  // Авто-trial при первом start
-  const { data: userData } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-  if (userData && !userData.trial_used) {
-    const trialDays = await getConfig('trial_days', 3) as number;
-    await supabase.from('users').update({ trial_used: true, trial_expires_at: new Date(Date.now() + trialDays * 86400000).toISOString() }).eq('id', userId);
-  }
-
   const botUsername = ctx.me.username;
   const text =
     '▶️ <b>Демонстрация работы</b>\n\n' +
@@ -174,13 +148,6 @@ commandsModule.callbackQuery('start:demo', async (ctx) => {
 // Кнопка "Туториал" — видео + текст + кнопки
 commandsModule.callbackQuery('start:tutorial', async (ctx) => {
   await ctx.answerCallbackQuery();
-
-  // Авто-trial при первом start
-  const { data: userData } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-  if (userData && !userData.trial_used) {
-    const trialDays = await getConfig('trial_days', 3) as number;
-    await supabase.from('users').update({ trial_used: true, trial_expires_at: new Date(Date.now() + trialDays * 86400000).toISOString() }).eq('id', userId);
-  }
 
   const botUsername = ctx.me.username;
   const text =
@@ -202,13 +169,6 @@ commandsModule.callbackQuery('start:tutorial', async (ctx) => {
 // Кнопка "Назад" — возвращает стартовое сообщение
 commandsModule.callbackQuery('start:back', async (ctx) => {
   await ctx.answerCallbackQuery();
-
-  // Авто-trial при первом start
-  const { data: userData } = await supabase.from('users').select('trial_used').eq('id', userId).single();
-  if (userData && !userData.trial_used) {
-    const trialDays = await getConfig('trial_days', 3) as number;
-    await supabase.from('users').update({ trial_used: true, trial_expires_at: new Date(Date.now() + trialDays * 86400000).toISOString() }).eq('id', userId);
-  }
 
   const botUsername = ctx.me.username;
   const keyboard = new InlineKeyboard()

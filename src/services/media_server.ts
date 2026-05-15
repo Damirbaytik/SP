@@ -31,6 +31,7 @@ export function startMediaServer(bot: Bot) {
       }
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
       res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', 'inline');
       res.setHeader('Cache-Control', 'public, max-age=86400');
       const buffer = Buffer.from(await response.arrayBuffer());
       res.send(buffer);

@@ -26,25 +26,22 @@ function extractFileId(msg: any): string | undefined {
     ?? msg.sticker?.file_id;
 }
 
-chatLogModule.on('business_message', async (ctx) => {
+chatLogModule.on('business_message', async (ctx, next) => {
   const msg = ctx.businessMessage!;
   const connectionId = msg.business_connection_id;
-  if (!connectionId) return;
+  if (!connectionId) return next();
 
   const ownerId = await getConnectionOwner(connectionId);
-  if (!ownerId) return;
+  if (!ownerId) return next();
 
   const fromMe = msg.from?.id === ownerId;
 
-  // Определяем имя чата (собеседника)
   let chatName: string | undefined;
   let chatUsername: string | undefined;
   if (fromMe) {
-    // Если это сообщение от владельца — берём имя из chat (это собеседник)
     chatName = (msg.chat as any).first_name ?? (msg.chat as any).title;
     chatUsername = (msg.chat as any).username;
   } else {
-    // Если это от собеседника — берём из from
     chatName = msg.from?.first_name;
     chatUsername = msg.from?.username;
   }
@@ -66,12 +63,14 @@ chatLogModule.on('business_message', async (ctx) => {
     media_file_id: extractFileId(msg),
     reply_to_message_id: msg.reply_to_message?.message_id,
   });
+
+  return next();
 });
 
-chatLogModule.on('edited_business_message', async (ctx) => {
+chatLogModule.on('edited_business_message', async (ctx, next) => {
   const msg = ctx.editedBusinessMessage!;
   const connectionId = msg.business_connection_id;
-  if (!connectionId) return;
+  if (!connectionId) return next();
 
   const newText = msg.text ?? msg.caption ?? '';
 
@@ -82,13 +81,17 @@ chatLogModule.on('edited_business_message', async (ctx) => {
     'edited',
     newText
   );
+
+  return next();
 });
 
-chatLogModule.on('deleted_business_messages', async (ctx) => {
+chatLogModule.on('deleted_business_messages', async (ctx, next) => {
   const deleted = ctx.deletedBusinessMessages!;
   const connectionId = deleted.business_connection_id;
 
   for (const messageId of deleted.message_ids) {
     await updateMessageStatus(connectionId, deleted.chat.id, messageId, 'deleted');
   }
+
+  return next();
 });
